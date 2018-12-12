@@ -23,7 +23,7 @@ public class Main {
     public static final String VANILLA_SERVER = "https://launcher.mojang.com/v1/objects/3737db93722a9e39eeada7c27e7aca28b144ffa7/server.jar";
     // public static final String SPIGOT_SERVER = "https://cdn.getbukkit.org/spigot/spigot-1.13.jar";
 
-    public static void main(String... args) throws Throwable {
+    public static void main(String[] args) throws Throwable {
         if (args.length == 0 || args[0].equals("--install")) {
             runClientInstaller();
         } else if (args[0].equals("--server")) {
@@ -97,11 +97,46 @@ public class Main {
                 minecraftFolder = new File(System.getProperty("user.home") + "/.minecraft");
             }
 
+            // modified: choose path
+            JFileChooser dlg = new JFileChooser(minecraftFolder);
+            dlg.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+            int res = dlg.showOpenDialog(null);
+            if(res == JFileChooser.APPROVE_OPTION) {
+            	minecraftFolder = dlg.getSelectedFile();
+            } else {
+            	JOptionPane.showMessageDialog(null, "to quit", "Rift Installer", JOptionPane.INFORMATION_MESSAGE);
+            	return;
+            }
+            
+            // Copy rift jar to libraries
+            // modified: copy @VERSION@.jar
+            File versionFolder = new File(minecraftFolder, "versions");
+            File oldJar = null;          
+            if(versionFolder.exists()) {
+            	for(File f : versionFolder.listFiles()) {
+            		String folder = f.getName();
+            		if(folder.startsWith("1.13.2")) {
+            			File gameJar = new File(f, folder + ".jar");
+            			if(gameJar.isFile()) {
+            				oldJar = gameJar;
+            				break;
+            			}
+            		}
+            	}
+            }
+            
             // Copy the version json
             File versionJson = new File(minecraftFolder, "versions/1.13.2-rift-@VERSION@/1.13.2-rift-@VERSION@.json");
             versionJson.getParentFile().mkdirs();
             Files.copy(Main.class.getResourceAsStream("/profile.json"), versionJson.toPath(), StandardCopyOption.REPLACE_EXISTING);
-
+            
+            // modified: copy @VERSION@.jar
+            if(oldJar != null) {
+            	File versionJar = new File(minecraftFolder, "versions/1.13.2-rift-@VERSION@/1.13.2-rift-@VERSION@.jar");
+            	//versionJar.getParentFile().mkdirs();
+            	Files.copy(oldJar.toPath(), versionJar.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            }
+            
             // Make mods directory
             try {
                 File modsFolder = new File(minecraftFolder, "mods");
@@ -135,7 +170,8 @@ public class Main {
                 t.printStackTrace();
             }
 
-            // Copy rift jar to libraries
+            
+            
             try {
                 String source = Main.class.getProtectionDomain().getCodeSource().getLocation().getPath();
                 if (source.startsWith("/") && osName.contains("win")) {
@@ -148,9 +184,19 @@ public class Main {
                 t.printStackTrace();
             }
 
+            // modified: copy @VERSION@.jar
+            String tips = "It seems that you don't have any 1.13.2.jar\n"
+        			+ "You can:\n"
+        			+ "  1. Download `1.13.2.jar`;\n"
+        			+ "  2. Rename it as `1.13.2-rift-@VERSION@.jar`;\n"
+        			+ "  3. Put it into the folder `" + new File(versionFolder, "1.13.2-rift-@VERSION@") + "`\n"
+        			+ "----------------------------------------------------------------------\n";
+            
             JOptionPane.showMessageDialog(null,
-                    "Rift @VERSION@ for Minecraft 1.13.2 has been successfully installed!\n" +
-                    "\n" +
+                    "Rift @VERSION@ for Minecraft 1.13.2 has been successfully installed at\n" +
+                    "[  " + minecraftFolder.getAbsolutePath() + "  ]\n" + 
+                    "----------------------------------------------------------------------\n" +
+                    (oldJar == null ? tips : "") + 
                     "It is available in the dropdown menu of the vanilla Minecraft launcher.\n" +
                     "You'll need to restart the Minecraft Launcher if you had it open when\n" +
                     "you ran this installer.",
